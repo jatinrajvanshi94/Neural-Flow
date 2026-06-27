@@ -18,7 +18,7 @@
     <style>
         :root {
             --bg-color: #060608;
-            --panel-bg: rgba(14, 14, 18, 0.8);
+            --panel-bg: rgba(14, 14, 18, 0.85);
             --panel-border: rgba(255, 255, 255, 0.06);
             --accent-color: #ffffff;
             --accent-glow: rgba(255, 255, 255, 0.1);
@@ -35,7 +35,6 @@
             background: var(--bg-color); 
             color: var(--text-main); 
             font-family: var(--font-body); 
-            cursor: none;
             user-select: none;
             -webkit-user-select: none;
         }
@@ -74,7 +73,7 @@
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(20px); 
             -webkit-backdrop-filter: blur(20px);
-            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             box-sizing: border-box;
             pointer-events: auto;
         }
@@ -193,13 +192,14 @@
             font-size: 11px; 
             letter-spacing: 1px; 
             text-transform: uppercase; 
-            cursor: none; 
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
             backdrop-filter: blur(8px); 
             -webkit-backdrop-filter: blur(8px);
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
+            user-select: none;
         }
 
         button:hover { 
@@ -207,6 +207,11 @@
             border-color: rgba(255, 255, 255, 0.25); 
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
             transform: translateY(-1px);
+        }
+
+        button:focus, button:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.6);
+            outline-offset: 2px;
         }
 
         button.active {
@@ -217,24 +222,9 @@
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
         }
 
-        #toggleAudio.active {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: var(--accent-color);
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
-        }
-        
-        #toggleTrails.active {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: var(--accent-color);
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
-        }
-        
-        #togglePlexus.active {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: var(--accent-color);
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
-        }
-        
+        #toggleAudio.active,
+        #toggleTrails.active,
+        #togglePlexus.active,
         #toggleWebcam.active {
             background: rgba(255, 255, 255, 0.12);
             border-color: var(--accent-color);
@@ -260,6 +250,7 @@
         }
 
         #audio-unlock .intro-card {
+            width: 90%;
             max-width: 480px;
             padding: 40px 32px;
             background: rgba(14, 14, 18, 0.6);
@@ -268,6 +259,7 @@
             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
+            box-sizing: border-box;
         }
 
         #audio-unlock h2 {
@@ -399,11 +391,354 @@
             color: var(--text-muted);
             text-decoration: none;
             transition: color 0.3s ease;
-            cursor: none;
         }
         
         .hud-footer a:hover {
             color: var(--accent-color);
+        }
+
+        /* Hamburger Menu Button */
+        .hamburger-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 48px;
+            height: 48px;
+            background: rgba(14, 14, 18, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            z-index: 1001;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .hamburger-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .hamburger-box {
+            width: 20px;
+            height: 14px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hamburger-inner {
+            width: 20px;
+            height: 2px;
+            background-color: var(--text-main);
+            position: absolute;
+            transition: transform 0.22s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+        }
+
+        .hamburger-inner::before, .hamburger-inner::after {
+            content: "";
+            display: block;
+            width: 20px;
+            height: 2px;
+            background-color: var(--text-main);
+            position: absolute;
+            transition: transform 0.22s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+        }
+
+        .hamburger-inner::before {
+            top: -6px;
+        }
+
+        .hamburger-inner::after {
+            bottom: -6px;
+        }
+
+        /* Hamburger Open States */
+        .hamburger-btn.active .hamburger-inner {
+            transform: rotate(225deg);
+            transition-delay: 0.12s;
+            transition-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+        }
+
+        .hamburger-btn.active .hamburger-inner::before {
+            top: 0;
+            opacity: 0;
+            transition: top 0.1s ease, opacity 0.1s 0.12s ease;
+        }
+
+        .hamburger-btn.active .hamburger-inner::after {
+            bottom: 0;
+            transform: rotate(-90deg);
+            transition: bottom 0.1s ease, transform 0.22s 0.12s cubic-bezier(0.215, 0.61, 0.355, 1);
+        }
+
+        /* Hover / Touch Capability Adjustments */
+        @media (hover: hover) {
+            body, button, a, .shape-btn, .hamburger-btn {
+                cursor: none;
+            }
+        }
+        @media (hover: none) {
+            body {
+                cursor: auto;
+            }
+            button, a, .shape-btn, .hamburger-btn {
+                cursor: pointer;
+            }
+            #cursor-dot, #cursor-ring {
+                display: none !important;
+            }
+        }
+
+        /* Hide Hamburger Button on Desktops by default */
+        @media (min-width: 1025px) {
+            .hamburger-btn {
+                display: none !important;
+            }
+        }
+
+        /* Mobile & Tablet Slide-out Drawer Styles (max-width: 1024px) */
+        @media (max-width: 1024px) {
+            .ui {
+                position: fixed;
+                top: 0;
+                right: 0;
+                left: auto;
+                width: 320px;
+                max-width: 85vw;
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+                border: none;
+                border-left: 3px solid var(--accent-color);
+                padding: 80px 24px 40px 24px;
+                transform: translate3d(100%, 0, 0); /* Hidden offscreen on the right */
+                transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: -10px 0 35px rgba(0, 0, 0, 0.6);
+                z-index: 1000;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .ui.expanded {
+                transform: translate3d(0, 0, 0); /* Slide-in */
+            }
+
+            .ui h1 {
+                font-size: 20px;
+            }
+
+            .ui p {
+                font-size: 12px;
+            }
+
+            .instruction-list {
+                gap: 10px;
+                margin-top: 14px;
+            }
+
+            .instruction-item {
+                font-size: 12px;
+                gap: 10px;
+            }
+
+            .instruction-icon {
+                width: 22px;
+                height: 22px;
+                font-size: 11px;
+            }
+
+            /* Responsive Top Toggles inside Drawer */
+            .top-controls {
+                position: relative;
+                top: auto;
+                right: auto;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                width: 100%;
+                margin-top: 24px;
+                margin-bottom: 24px;
+                z-index: 1;
+            }
+            
+            .top-controls button {
+                width: 100%;
+                justify-content: center;
+                padding: 12px 8px;
+                font-size: 10px;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.04);
+            }
+
+            /* Responsive Shape Controls inside Drawer */
+            .controls {
+                position: relative;
+                bottom: auto;
+                left: auto;
+                transform: none;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                width: 100%;
+                margin-top: 24px;
+                margin-bottom: 24px;
+                padding: 0;
+                background: none;
+                border: none;
+                box-shadow: none;
+                max-width: 100%;
+                z-index: 1;
+                overflow-x: visible;
+            }
+            
+            .controls button {
+                width: 100%;
+                justify-content: center;
+                padding: 12px 8px;
+                font-size: 10px;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.04);
+            }
+
+            /* Responsive Footer inside Drawer */
+            .hud-footer {
+                position: relative;
+                bottom: auto;
+                right: auto;
+                display: flex;
+                flex-direction: row;
+                justify-content: center;
+                align-items: center;
+                gap: 20px;
+                width: 100%;
+                margin-top: 32px;
+                padding-top: 16px;
+                border-top: 1px solid rgba(255, 255, 255, 0.05);
+                font-size: 11px;
+                z-index: 1;
+            }
+
+            /* Intro Card Responsive scaling */
+            #audio-unlock .intro-card {
+                width: 92%;
+                max-width: 380px;
+                padding: 32px 20px;
+                border-radius: 16px;
+            }
+            
+            #audio-unlock h2 {
+                font-size: 24px;
+                letter-spacing: 3px;
+            }
+            
+            #audio-unlock p {
+                font-size: 13px;
+                margin-bottom: 24px;
+                line-height: 1.5;
+            }
+
+            #start-btn {
+                padding: 14px 28px;
+                font-size: 11px;
+                letter-spacing: 1.5px;
+            }
+        }
+
+        /* Smart TV & 4K Screen Enhancements */
+        @media (min-width: 1920px), (tv) {
+            .ui {
+                top: 50px;
+                left: 50px;
+                width: 440px;
+                padding: 32px;
+                border-radius: 24px;
+                border-left-width: 4px;
+            }
+            h1 {
+                font-size: 28px;
+                letter-spacing: 4px;
+            }
+            p {
+                font-size: 16px;
+                margin-top: 12px;
+            }
+            .hud-status {
+                font-size: 12px;
+                margin-bottom: 16px;
+                gap: 10px;
+            }
+            .status-dot {
+                width: 8px;
+                height: 8px;
+            }
+            .instruction-list {
+                margin-top: 24px;
+                gap: 16px;
+            }
+            .instruction-item {
+                font-size: 14px;
+                gap: 14px;
+            }
+            .instruction-icon {
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+                border-radius: 8px;
+            }
+            .top-controls {
+                top: 50px;
+                right: 50px;
+                gap: 14px;
+            }
+            button {
+                padding: 14px 24px;
+                font-size: 14px;
+                border-radius: 10px;
+                gap: 10px;
+            }
+            .controls {
+                bottom: 50px;
+                padding: 12px 20px;
+                border-radius: 20px;
+                gap: 10px;
+            }
+            .hud-footer {
+                bottom: 50px;
+                right: 50px;
+                font-size: 14px;
+                gap: 24px;
+            }
+            #audio-unlock .intro-card {
+                max-width: 600px;
+                padding: 50px 40px;
+                border-radius: 32px;
+            }
+            #audio-unlock h2 {
+                font-size: 42px;
+                letter-spacing: 6px;
+            }
+            #audio-unlock p {
+                font-size: 18px;
+                margin-bottom: 40px;
+            }
+            #start-btn {
+                padding: 20px 48px;
+                font-size: 16px;
+                letter-spacing: 3px;
+            }
+            
+            /* D-Pad focus styling */
+            button:focus, button:focus-visible, a:focus, a:focus-visible {
+                outline: 3px solid #ffffff;
+                outline-offset: 4px;
+                background: rgba(255, 255, 255, 0.2) !important;
+                box-shadow: 0 0 25px rgba(255, 255, 255, 0.4) !important;
+            }
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -490,10 +825,25 @@
         const loadingText = document.getElementById('loading');
         const instructionsText = document.getElementById('instructions');
 
+        // Global variables declared at the top to avoid temporal dead zone reference errors in resize()
         let width, height;
+        let activeHands = 0;
+        let pointerDown = false;
+        let simulated = false;
+        let isPinching = false;
+        let charge = 0;
+        let pinchPos = { x: 0, y: 0 };
+        let state = null;
+        let targetState = null;
+
         function resize() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
+            
+            if (targetState) {
+                targetState.cx = width / 2;
+                targetState.cy = height / 2;
+            }
         }
         window.addEventListener('resize', resize);
         resize();
@@ -641,19 +991,14 @@
         let currentColor = {r: 255, g: 255, b: 255};
         let colorIndexTarget = 0;
 
-        const state = { cx: width / 2, cy: height / 2, scale: 1, rotX: 0, rotY: 0 };
-        const targetState = { cx: width / 2, cy: height / 2, scale: 1, rotX: 0, rotY: 0 };
+        state = { cx: width / 2, cy: height / 2, scale: 1, rotX: 0, rotY: 0 };
+        targetState = { cx: width / 2, cy: height / 2, scale: 1, rotX: 0, rotY: 0 };
         
         let formationScaleTarget = 1.0; 
         let scatterAmountTarget = 0;    
         let currentFormationScale = 1.0;
         let currentScatterAmount = 0;
 
-        let activeHands = 0;
-        let isPinching = false;
-        let charge = 0;
-        let pinchPos = { x: 0, y: 0 };
-        let simulated = false;
         let lastDemoTime = Date.now();
 
         // Toggles
@@ -768,7 +1113,6 @@
         }
 
         // --- 3. MOUSE / TOUCH FALLBACK ---
-        let pointerDown = false;
         
         window.addEventListener('pointerdown', (e) => {
             if (e.target.tagName === 'BUTTON' || e.target.id === 'start-btn') return;
@@ -1262,6 +1606,75 @@
         } else {
             simulated = true;
             loadingText.innerHTML = "Preview Sandbox Active <br><br> <span style='color:#ffaaaa'>For Hand Tracking, please download this file and open it in your browser.</span>";
+        }
+
+        // --- Collapsible UI Panel Handler for Mobile/Tablets ---
+        const uiLeftPanel = document.getElementById('ui-left');
+        const uiRightPanel = document.getElementById('ui-right');
+        const uiBottomPanel = document.getElementById('ui-bottom');
+        const uiFooterPanel = document.getElementById('ui-footer');
+        
+        // Add hamburger button dynamically
+        const hamburgerBtn = document.createElement('button');
+        hamburgerBtn.id = 'hamburger-btn';
+        hamburgerBtn.className = 'hamburger-btn';
+        hamburgerBtn.setAttribute('aria-label', 'Toggle Menu');
+        hamburgerBtn.innerHTML = `
+            <div class="hamburger-box">
+                <span class="hamburger-inner"></span>
+            </div>
+        `;
+        document.body.appendChild(hamburgerBtn);
+
+        function handleResponsiveLayout() {
+            const isMobile = window.innerWidth <= 1024;
+            
+            if (isMobile) {
+                // Move elements inside the drawer (ui-left) if not already there
+                if (uiRightPanel && uiRightPanel.parentNode !== uiLeftPanel) {
+                    uiLeftPanel.appendChild(uiRightPanel);
+                }
+                if (uiBottomPanel && uiBottomPanel.parentNode !== uiLeftPanel) {
+                    uiLeftPanel.appendChild(uiBottomPanel);
+                }
+                if (uiFooterPanel && uiFooterPanel.parentNode !== uiLeftPanel) {
+                    uiLeftPanel.appendChild(uiFooterPanel);
+                }
+            } else {
+                // Move elements back to body
+                if (uiRightPanel && uiRightPanel.parentNode === uiLeftPanel) {
+                    document.body.appendChild(uiRightPanel);
+                }
+                if (uiBottomPanel && uiBottomPanel.parentNode === uiLeftPanel) {
+                    document.body.appendChild(uiBottomPanel);
+                }
+                if (uiFooterPanel && uiFooterPanel.parentNode === uiLeftPanel) {
+                    document.body.appendChild(uiFooterPanel);
+                }
+                // Ensure drawer is closed and active state is clean on desktop
+                if (uiLeftPanel) uiLeftPanel.classList.remove('expanded');
+                if (hamburgerBtn) hamburgerBtn.classList.remove('active');
+            }
+        }
+
+        window.addEventListener('resize', handleResponsiveLayout);
+        handleResponsiveLayout(); // Initial run
+
+        if (hamburgerBtn && uiLeftPanel) {
+            hamburgerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                hamburgerBtn.classList.toggle('active');
+                uiLeftPanel.classList.toggle('expanded');
+            });
+            
+            // Auto collapse drawer when clicking outside it or on the canvas directly
+            window.addEventListener('pointerdown', (e) => {
+                if (e.target.closest('#ui-left') || e.target.closest('#hamburger-btn')) return;
+                if (uiLeftPanel.classList.contains('expanded')) {
+                    uiLeftPanel.classList.remove('expanded');
+                    hamburgerBtn.classList.remove('active');
+                }
+            });
         }
 
     </script>
