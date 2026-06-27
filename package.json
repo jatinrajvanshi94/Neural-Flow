@@ -1,0 +1,12 @@
+{
+  "name": "neural-flow",
+  "version": "1.0.0",
+  "description": "Interactive 3D Particle Experience",
+  "main": "index.html",
+  "scripts": {
+    "lint": "htmlhint index.html"
+  },
+  "devDependencies": {
+    "htmlhint": "^1.1.4"
+  }
+}
