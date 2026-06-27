@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEURAL FLOW — Interactive 3D Particle Experience</title>
+    <meta name="description" content="An interactive 3D particle morphing sandbox driven by hand-gestures, webcam input, and real-time Web Audio API synthesis.">
+    
+    <!-- Google Fonts for futuristic & clean HUD design -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #060608;
+            --panel-bg: rgba(14, 14, 18, 0.8);
+            --panel-border: rgba(255, 255, 255, 0.06);
+            --accent-color: #ffffff;
+            --accent-glow: rgba(255, 255, 255, 0.1);
+            --accent-muted: #8e8e93;
+            --text-main: #f2f2f7;
+            --text-muted: #8e8ea0;
+            --font-display: 'Orbitron', sans-serif;
+            --font-body: 'Outfit', sans-serif;
+        }
+
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: var(--bg-color); 
+            color: var(--text-main); 
+            font-family: var(--font-body); 
+            cursor: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        h1 { 
+            font-family: var(--font-display); 
+            font-size: 22px; 
+            font-weight: 700;
+            letter-spacing: 3px; 
+            margin: 0; 
+            background: linear-gradient(135deg, #ffffff 40%, var(--accent-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+        }
+
+        p { 
+            font-size: 13px; 
+            color: var(--text-muted); 
+            letter-spacing: 0.5px; 
+            margin-top: 8px;
+            line-height: 1.6;
+        }
+
+        .ui { 
+            position: absolute; 
+            top: 30px; 
+            left: 30px; 
+            z-index: 10; 
+            width: 320px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-left: 3px solid var(--accent-color);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            box-sizing: border-box;
+            pointer-events: auto;
+        }
+
+        .hud-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 10px;
+            font-family: var(--font-display);
+            letter-spacing: 1.5px;
+            color: var(--accent-muted);
+            text-transform: uppercase;
+        }
+        
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background-color: var(--accent-muted);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-muted);
+            animation: pulse-dot 2s infinite;
+        }
+        
+        @keyframes pulse-dot {
+            0% { opacity: 0.4; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.1); }
+            100% { opacity: 0.4; transform: scale(0.9); }
+        }
+
+        .instruction-list {
+            margin-top: 18px;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .instruction-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        
+        .instruction-icon {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        
+        .instruction-text {
+            color: var(--text-muted);
+        }
+        
+        .instruction-text strong {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        .controls { 
+            position: absolute; 
+            bottom: 30px; 
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10; 
+            display: flex;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            max-width: 90vw;
+            overflow-x: auto;
+            scrollbar-width: none;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: auto;
+        }
+
+        .controls::-webkit-scrollbar {
+            display: none;
+        }
+
+        .top-controls {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            z-index: 10;
+            display: flex;
+            gap: 10px;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: auto;
+        }
+
+        button { 
+            background: rgba(255, 255, 255, 0.03); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            color: var(--text-main); 
+            padding: 10px 16px; 
+            border-radius: 8px; 
+            font-family: var(--font-body); 
+            font-weight: 500;
+            font-size: 11px; 
+            letter-spacing: 1px; 
+            text-transform: uppercase; 
+            cursor: none; 
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); 
+            backdrop-filter: blur(8px); 
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover { 
+            background: rgba(255, 255, 255, 0.08); 
+            border-color: rgba(255, 255, 255, 0.25); 
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+            transform: translateY(-1px);
+        }
+
+        button.active {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--accent-color);
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+
+        #toggleAudio.active {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+        
+        #toggleTrails.active {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+        
+        #togglePlexus.active {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+        
+        #toggleWebcam.active {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Audio Unlock Overlay */
+        #audio-unlock {
+            position: absolute;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: radial-gradient(circle at center, rgba(6, 6, 8, 0.88) 0%, rgba(3, 3, 4, 0.98) 100%);
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
+            padding: 24px;
+            box-sizing: border-box;
+        }
+
+        #audio-unlock .intro-card {
+            max-width: 480px;
+            padding: 40px 32px;
+            background: rgba(14, 14, 18, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 24px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        #audio-unlock h2 {
+            font-family: var(--font-display);
+            font-size: 32px;
+            font-weight: 900;
+            letter-spacing: 5px;
+            margin: 0 0 12px 0;
+            background: linear-gradient(135deg, #ffffff 0%, var(--accent-muted) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #audio-unlock p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin: 0 0 32px 0;
+            letter-spacing: 0.5px;
+        }
+
+        #start-btn {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            font-family: var(--font-display);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 16px 36px;
+            background: #ffffff;
+            border: none;
+            color: #060608;
+            border-radius: 50px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.12);
+            margin: 0 auto;
+        }
+
+        #start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(255, 255, 255, 0.25);
+            background: #f2f2f7;
+        }
+
+        #webcam { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            height: 100vh; 
+            object-fit: cover; 
+            z-index: 0; 
+            transform: scaleX(-1); 
+            opacity: 0; 
+            transition: opacity 0.8s ease; 
+        }
+
+        canvas { 
+            display: block; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            z-index: 1; 
+        }
+
+        /* Custom Cursor Dot & Ring */
+        #cursor-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #ffffff;
+            border-radius: 50%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translate3d(-50%, -50%, 0);
+            pointer-events: none;
+            z-index: 10000;
+            mix-blend-mode: difference;
+            transition: width 0.2s ease, height 0.2s ease, background-color 0.2s ease;
+        }
+        
+        #cursor-ring {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            transform: translate3d(-50%, -50%, 0);
+            pointer-events: none;
+            z-index: 9999;
+            transition: width 0.2s ease, height 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+        }
+
+        #cursor-dot.hover {
+            width: 4px;
+            height: 4px;
+        }
+
+        #cursor-ring.hover {
+            width: 48px;
+            height: 48px;
+            border-color: rgba(255, 255, 255, 0.8);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .hud-footer {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            z-index: 10;
+            display: flex;
+            gap: 20px;
+            font-size: 11px;
+            font-family: var(--font-display);
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: auto;
+        }
+        
+        .hud-footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s ease;
+            cursor: none;
+        }
+        
+        .hud-footer a:hover {
+            color: var(--accent-color);
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+</head>
+<body>
+    <div id="cursor-dot"></div>
+    <div id="cursor-ring"></div>
+    
+    <div id="audio-unlock">
+        <div class="intro-card">
+            <h2>NEURAL FLOW</h2>
+            <p>Step into an interactive 3D particle simulation driven by hand-gestures or mouse coordinates and generative audio synthesis.</p>
+            <button id="start-btn">ENTER EXPERIENCE</button>
+        </div>
+    </div>
+
+    <video id="webcam" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+
+    <div class="ui" id="ui-left">
+        <div class="hud-status">
+            <span class="status-dot"></span>
+            <span>HUD System Status</span>
+        </div>
+        <h1>NEURAL FLOW</h1>
+        <p id="loading">Initializing MediaPipe &amp; Webcam...</p>
+        <div id="instructions" style="display:none;">
+            <ul class="instruction-list">
+                <li class="instruction-item">
+                    <span class="instruction-icon">✋</span>
+                    <span class="instruction-text"><strong>1 Hand / Mouse:</strong> Rotate &amp; Pan</span>
+                </li>
+                <li class="instruction-item">
+                    <span class="instruction-icon">🤏</span>
+                    <span class="instruction-text"><strong>Pinch / Click &amp; Hold:</strong> Charge &amp; Explode</span>
+                </li>
+                <li class="instruction-item">
+                    <span class="instruction-icon">🙌</span>
+                    <span class="instruction-text"><strong>2 Hands (Spread):</strong> Break apart</span>
+                </li>
+                <li class="instruction-item">
+                    <span class="instruction-icon">🤝</span>
+                    <span class="instruction-text"><strong>2 Hands (Compact):</strong> Condense core</span>
+                </li>
+                <li class="instruction-item">
+                    <span class="instruction-icon">✌️</span>
+                    <span class="instruction-text"><strong>Fingers / Scroll:</strong> Change Color / Zoom</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="top-controls" id="ui-right">
+        <button id="toggleAudio" class="active">🔈 Audio: ON</button>
+        <button id="toggleTrails" class="active">☄️ Trails: ON</button>
+        <button id="togglePlexus">🕸️ Plexus: OFF</button>
+        <button id="toggleWebcam">📷 Webcam</button>
+    </div>
+
+    <div class="controls" id="ui-bottom">
+        <button class="shape-btn active" data-shape="0">Sphere</button>
+        <button class="shape-btn" data-shape="1">Cube</button>
+        <button class="shape-btn" data-shape="2">Torus</button>
+        <button class="shape-btn" data-shape="3">Helix</button>
+        <button class="shape-btn" data-shape="4">Galaxy</button>
+        <button class="shape-btn" data-shape="5">Heart</button>
+        <button class="shape-btn" data-shape="6">Tornado</button>
+        <button class="shape-btn" data-shape="7">Infinity</button>
+    </div>
+
+    <div class="hud-footer" id="ui-footer">
+        <span>© JATIN RAJVANSHI </span>
+        <a href="mailto:jatinrajvanshi94@gmail.com">Email</a>
+        <a href="https://github.com/jatinrajvanshi94" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+
+    <script>
+        // --- 1. CONFIG & SETUP ---
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const videoElement = document.getElementById('webcam');
+        const loadingText = document.getElementById('loading');
+        const instructionsText = document.getElementById('instructions');
+
+        let width, height;
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 3D Particles & Shapes
+        const numParticles = 3000;
+        const radius = 220;
+        const particles = [];
+        let currentShapeIndex = 0;
+        const NUM_SHAPES = 8;
+        
+        for (let i = 0; i < numParticles; i++) {
+            const p = {
+                shapes: [], 
+                base: {x: 0, y: 0, z: 0},
+                curr: {x: 0, y: 0, z: 0},
+                v: {x: 0, y: 0, z: 0},
+                noise: {
+                    x: (Math.random() - 0.5) * 2,
+                    y: (Math.random() - 0.5) * 2,
+                    z: (Math.random() - 0.5) * 2
+                },
+                xProj: 0, yProj: 0, zProj: 0
+            };
+            
+            const nLen = Math.hypot(p.noise.x, p.noise.y, p.noise.z) || 1;
+            p.noise.x /= nLen; p.noise.y /= nLen; p.noise.z /= nLen;
+
+            // 0: SPHERE
+            const phi = Math.acos(1 - 2 * (i + 0.5) / numParticles);
+            const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+            p.shapes.push({
+                x: radius * Math.sin(phi) * Math.cos(theta),
+                y: radius * Math.sin(phi) * Math.sin(theta),
+                z: radius * Math.cos(phi)
+            });
+
+            // 1: CUBE
+            const rCube = radius * 0.8;
+            const face = Math.floor(Math.random() * 6);
+            const u = (Math.random() - 0.5) * 2 * rCube;
+            const v = (Math.random() - 0.5) * 2 * rCube;
+            let sx=0, sy=0, sz=0;
+            if (face===0){sx=rCube; sy=u; sz=v;} else if(face===1){sx=-rCube; sy=u; sz=v;}
+            else if(face===2){sx=u; sy=rCube; sz=v;} else if(face===3){sx=u; sy=-rCube; sz=v;}
+            else if(face===4){sx=u; sy=v; sz=rCube;} else if(face===5){sx=u; sy=v; sz=-rCube;}
+            p.shapes.push({x: sx, y: sy, z: sz});
+
+            // 2: TORUS
+            const torT = Math.random() * Math.PI * 2;
+            const torU = Math.random() * Math.PI * 2;
+            const R = radius * 0.7;
+            const tr = radius * 0.3;
+            p.shapes.push({
+                x: (R + tr * Math.cos(torU)) * Math.cos(torT),
+                y: (R + tr * Math.cos(torU)) * Math.sin(torT),
+                z: tr * Math.sin(torU)
+            });
+
+            // 3: HELIX
+            const strand = i % 2;
+            const tHelix = (i / numParticles) * Math.PI * 10;
+            const yHelix = (i / numParticles - 0.5) * radius * 3;
+            const RHelix = radius * 0.5;
+            p.shapes.push({
+                x: Math.cos(tHelix + strand * Math.PI) * RHelix,
+                y: yHelix,
+                z: Math.sin(tHelix + strand * Math.PI) * RHelix
+            });
+
+            // 4: GALAXY
+            const arms = 4;
+            const armIndex = i % arms;
+            const rGal = Math.pow(Math.random(), 0.6) * radius * 1.6;
+            const angleGal = rGal * 0.012 + (armIndex * Math.PI * 2 / arms) + (Math.random() - 0.5) * 0.5;
+            p.shapes.push({
+                x: rGal * Math.cos(angleGal),
+                y: (Math.random() - 0.5) * 40 * (1 - rGal / (radius * 1.6)), 
+                z: rGal * Math.sin(angleGal)
+            });
+
+            // 5: HEART
+            const tHeart = Math.random() * Math.PI * 2;
+            const hx = 16 * Math.pow(Math.sin(tHeart), 3);
+            const hy = -(13 * Math.cos(tHeart) - 5 * Math.cos(2*tHeart) - 2 * Math.cos(3*tHeart) - Math.cos(4*tHeart));
+            const hScale = radius / 16;
+            p.shapes.push({
+                x: hx * hScale + (Math.random()-0.5) * 20,
+                y: hy * hScale + (Math.random()-0.5) * 20,
+                z: (Math.random() - 0.5) * 50
+            });
+
+            // 6: TORNADO
+            const normY = Math.random(); 
+            const yTor = (normY - 0.5) * radius * 2.5; 
+            const rTornado = (1 - normY) * radius * 1.2 + 10;
+            const thetaTor = Math.random() * Math.PI * 2 + normY * 25; 
+            p.shapes.push({
+                x: rTornado * Math.cos(thetaTor) + (Math.random()-0.5) * 15,
+                y: yTor,
+                z: rTornado * Math.sin(thetaTor) + (Math.random()-0.5) * 15
+            });
+
+            // 7: INFINITY
+            const tInf = Math.random() * Math.PI * 2;
+            const aInf = radius * 1.4;
+            const xInf = (aInf * Math.cos(tInf)) / (1 + Math.pow(Math.sin(tInf), 2));
+            const yInf = (aInf * Math.sin(tInf) * Math.cos(tInf)) / (1 + Math.pow(Math.sin(tInf), 2));
+            p.shapes.push({
+                x: xInf + (Math.random()-0.5) * 25,
+                y: yInf + (Math.random()-0.5) * 25,
+                z: (Math.random()-0.5) * 60
+            });
+
+            p.base.x = p.shapes[0].x;
+            p.base.y = p.shapes[0].y;
+            p.base.z = p.shapes[0].z;
+            p.curr.x = p.base.x + (Math.random()-0.5)*100;
+            p.curr.y = p.base.y + (Math.random()-0.5)*100;
+            p.curr.z = p.base.z + (Math.random()-0.5)*100;
+
+            particles.push(p);
+        }
+
+        const colors = [
+            '#ffffff', // Pure White
+            '#f5f5f7', // Off White / Silver
+            '#e5e5ea', // Platinum
+            '#d1d1d6', // Light Slate
+            '#aeaeb2', // Muted Gray
+            '#f4f1ea', // Warm Champagne White
+            '#e3dfd5', // Muted Gold / Titanium
+            '#c7c2b5', // Sand Silver
+            '#b0c4de', // Light Steel Blue
+            '#a2b5cd', // Muted Ice Blue
+            '#e6e6fa'  // Lavender Mist
+        ];
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } 
+                          : {r: 255, g: 255, b: 255};
+        }
+
+        let currentColor = {r: 255, g: 255, b: 255};
+        let colorIndexTarget = 0;
+
+        const state = { cx: width / 2, cy: height / 2, scale: 1, rotX: 0, rotY: 0 };
+        const targetState = { cx: width / 2, cy: height / 2, scale: 1, rotX: 0, rotY: 0 };
+        
+        let formationScaleTarget = 1.0; 
+        let scatterAmountTarget = 0;    
+        let currentFormationScale = 1.0;
+        let currentScatterAmount = 0;
+
+        let activeHands = 0;
+        let isPinching = false;
+        let charge = 0;
+        let pinchPos = { x: 0, y: 0 };
+        let simulated = false;
+        let lastDemoTime = Date.now();
+
+        // Toggles
+        let audioEnabled = true;
+        let trailsEnabled = true;
+        let plexusEnabled = false;
+
+        // --- 2. ROBUST WEB AUDIO API ---
+        let audioCtx = null;
+        let chargeOsc = null;
+        let chargeGain = null;
+
+        // Explicit unlock for strict browsers
+        document.getElementById('start-btn').addEventListener('click', () => {
+            document.getElementById('audio-unlock').style.opacity = '0';
+            setTimeout(() => document.getElementById('audio-unlock').style.display = 'none', 500);
+            
+            // Force create context ON a user click
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+            
+            // Play a completely silent ping immediately to confirm context is unlocked to the browser
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            gain.gain.value = 0.001; // Silent
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(0);
+            osc.stop(audioCtx.currentTime + 0.1);
+        });
+
+        function playExplosionSound() {
+            if (!audioEnabled || !audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const t = audioCtx.currentTime;
+            
+            // Bass Drop
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(200, t);
+            osc.frequency.exponentialRampToValueAtTime(20, t + 0.8);
+            
+            // Set max volume for the explosion
+            gain.gain.setValueAtTime(0.8, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.8);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(t);
+            osc.stop(t + 0.8);
+
+            // High frequency "shatter"
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'square';
+            osc2.frequency.setValueAtTime(1200, t);
+            osc2.frequency.exponentialRampToValueAtTime(100, t + 0.3);
+            
+            gain2.gain.setValueAtTime(0.2, t);
+            gain2.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+            
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.start(t);
+            osc2.stop(t + 0.3);
+        }
+
+        function updateChargeAudio(isCharging, chargeAmt) {
+            if (!audioCtx) return;
+            if (!audioEnabled) {
+                if (chargeOsc) {
+                    try {
+                        chargeOsc.stop();
+                        chargeOsc.disconnect();
+                    } catch(e){}
+                    chargeOsc = null;
+                    chargeGain = null;
+                }
+                return;
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const t = audioCtx.currentTime;
+
+            if (isCharging) {
+                if (!chargeOsc) {
+                    chargeOsc = audioCtx.createOscillator();
+                    chargeGain = audioCtx.createGain();
+                    chargeOsc.type = 'sawtooth';
+                    chargeGain.gain.setValueAtTime(0, t);
+                    chargeOsc.connect(chargeGain);
+                    chargeGain.connect(audioCtx.destination);
+                    chargeOsc.start();
+                }
+                const freq = 50 + (chargeAmt * 600); // Pitch goes way up
+                const vol = chargeAmt * 0.3; // Louder charge
+                chargeOsc.frequency.setTargetAtTime(freq, t, 0.05);
+                chargeGain.gain.setTargetAtTime(vol, t, 0.05);
+            } else if (chargeOsc) {
+                // Fade out fast
+                chargeGain.gain.setTargetAtTime(0, t, 0.05);
+                
+                // Keep reference but kill it a moment later
+                const oldOsc = chargeOsc;
+                chargeOsc = null; 
+                setTimeout(() => {
+                    try { oldOsc.stop(); oldOsc.disconnect(); } catch(e){}
+                }, 100);
+            }
+        }
+
+        // --- 3. MOUSE / TOUCH FALLBACK ---
+        let pointerDown = false;
+        
+        window.addEventListener('pointerdown', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.id === 'start-btn') return;
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            
+            pointerDown = true;
+            isPinching = true;
+            pinchPos = { x: e.clientX, y: e.clientY };
+            hideUI(); 
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (activeHands === 0 && !simulated) {
+                targetState.cx = e.clientX;
+                targetState.cy = e.clientY;
+                targetState.rotY = (0.5 - (e.clientX / width)) * Math.PI * 2;
+                targetState.rotX = ((e.clientY / height) - 0.5) * Math.PI * 2;
+            }
+            if (pointerDown) {
+                pinchPos = { x: e.clientX, y: e.clientY };
+            }
+            showUI();
+        });
+
+        window.addEventListener('pointerup', () => {
+            if (pointerDown) {
+                pointerDown = false;
+                isPinching = false;
+                if (charge >= 1.0) triggerExplosion();
+                charge = 0;
+            }
+        });
+
+        window.addEventListener('wheel', (e) => {
+            if (activeHands === 0) {
+                targetState.scale += e.deltaY * -0.001;
+                targetState.scale = Math.max(0.3, Math.min(targetState.scale, 4.0));
+                colorIndexTarget = Math.floor(Math.abs(targetState.scale * 3)) % colors.length;
+            }
+        });
+
+        // --- 4. CINEMATIC AUTO-HIDE UI ---
+        let uiTimeout;
+        const uiElements = [
+            document.getElementById('ui-left'), 
+            document.getElementById('ui-right'), 
+            document.getElementById('ui-bottom'),
+            document.getElementById('ui-footer')
+        ];
+        
+        function showUI() {
+            uiElements.forEach(el => el.style.opacity = '1');
+            clearTimeout(uiTimeout);
+            uiTimeout = setTimeout(hideUI, 3000);
+        }
+        function hideUI() {
+            uiElements.forEach(el => el.style.opacity = '0');
+        }
+        showUI(); 
+
+        // --- 5. UI BUTTON HANDLERS ---
+        const shapeButtons = document.querySelectorAll('.shape-btn');
+        function updateShapeButtons() {
+            shapeButtons.forEach(btn => {
+                if (parseInt(btn.dataset.shape) === currentShapeIndex) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+        }
+        shapeButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                currentShapeIndex = parseInt(e.target.dataset.shape);
+                updateShapeButtons();
+            });
+        });
+
+        document.getElementById('toggleAudio').addEventListener('click', (e) => {
+            audioEnabled = !audioEnabled;
+            e.target.innerHTML = audioEnabled ? '🔈 Audio: ON' : '🔇 Audio: OFF';
+            e.target.classList.toggle('active', audioEnabled);
+            if (audioCtx) {
+                if (audioEnabled) {
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                } else {
+                    if (audioCtx.state === 'running') audioCtx.suspend();
+                    // Stop charge oscillator immediately
+                    if (chargeOsc) {
+                        try {
+                            chargeOsc.stop();
+                            chargeOsc.disconnect();
+                        } catch(e){}
+                        chargeOsc = null;
+                        chargeGain = null;
+                    }
+                }
+            }
+        });
+
+        document.getElementById('toggleTrails').addEventListener('click', (e) => {
+            trailsEnabled = !trailsEnabled;
+            e.target.innerHTML = trailsEnabled ? '☄️ Trails: ON' : '☄️ Trails: OFF';
+            e.target.classList.toggle('active', trailsEnabled);
+        });
+
+        document.getElementById('togglePlexus').addEventListener('click', (e) => {
+            plexusEnabled = !plexusEnabled;
+            e.target.innerHTML = plexusEnabled ? '🕸️ Plexus: ON' : '🕸️ Plexus: OFF';
+            e.target.classList.toggle('active', plexusEnabled);
+        });
+
+        let webcamVisible = false;
+        document.getElementById('toggleWebcam').addEventListener('click', (e) => {
+            webcamVisible = !webcamVisible;
+            document.getElementById('webcam').style.opacity = webcamVisible ? 0.35 : 0;
+            e.target.classList.toggle('active', webcamVisible);
+        });
+
+        // --- 6. PHYSICS & RENDER LOOP ---
+        const spring = 0.04;
+        const damp = 0.82;
+
+        function triggerExplosion() {
+            playExplosionSound();
+            particles.forEach(p => {
+                const speed = 30 + Math.random() * 45; 
+                p.v.x += p.noise.x * speed;
+                p.v.y += p.noise.y * speed;
+                p.v.z += p.noise.z * speed;
+            });
+            currentShapeIndex = (currentShapeIndex + 1) % NUM_SHAPES;
+            updateShapeButtons();
+        }
+
+        function render() {
+            // Update custom smooth cursor position (Lerping)
+            dotX += (mouseX - dotX) * 0.25;
+            dotY += (mouseY - dotY) * 0.25;
+            ringX += (mouseX - ringX) * 0.08;
+            ringY += (mouseY - ringY) * 0.08;
+            
+            if (cursorDot) cursorDot.style.transform = `translate3d(${dotX}px, ${dotY}px, 0) translate3d(-50%, -50%, 0)`;
+            if (cursorRing) cursorRing.style.transform = `translate3d(${ringX}px, ${ringY}px, 0) translate3d(-50%, -50%, 0)`;
+
+            if (trailsEnabled) {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = 'rgba(8, 8, 8, 0.25)'; 
+                ctx.fillRect(0, 0, width, height);
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.clearRect(0, 0, width, height);
+            }
+
+            ctx.globalCompositeOperation = 'lighter';
+
+            if (simulated) {
+                targetState.rotY += 0.01;
+                targetState.rotX = Math.sin(Date.now() * 0.001) * 0.3;
+                colorIndexTarget = Math.floor((Date.now() * 0.001) % colors.length);
+                
+                const cycle = Math.sin((Date.now() - lastDemoTime) * 0.0005);
+                if (cycle > 0.85) {
+                    scatterAmountTarget = (cycle - 0.85) * 800;
+                    formationScaleTarget = 1.0;
+                } else if (cycle < -0.85) {
+                    scatterAmountTarget = 0;
+                    formationScaleTarget = 0.05;
+                } else {
+                    scatterAmountTarget = 0;
+                    formationScaleTarget = 1.0;
+                }
+                
+                // Simulate occasional pinch explosion in preview mode
+                if (Math.random() < 0.002) {
+                    // Flash charge indicator quickly
+                    isPinching = true;
+                    charge = 1;
+                    pinchPos = {x: width/2, y: height/2};
+                    setTimeout(() => {
+                        triggerExplosion();
+                        isPinching = false;
+                        charge = 0;
+                    }, 50);
+                }
+            } else if (activeHands === 0 && !pointerDown) {
+                targetState.rotY += 0.003; 
+                targetState.rotX *= 0.95;
+                formationScaleTarget = 1.0;
+                scatterAmountTarget = 0;
+
+                if (isPinching && charge >= 1.0) triggerExplosion();
+                isPinching = false;
+                charge = 0;
+            }
+
+            updateChargeAudio(isPinching, charge);
+
+            state.cx += (targetState.cx - state.cx) * 0.1;
+            state.cy += (targetState.cy - state.cy) * 0.1;
+            state.scale += (targetState.scale - state.scale) * 0.1;
+            state.rotX += (targetState.rotX - state.rotX) * 0.1;
+            state.rotY += (targetState.rotY - state.rotY) * 0.1;
+
+            currentFormationScale += (formationScaleTarget - currentFormationScale) * 0.1;
+            currentScatterAmount += (scatterAmountTarget - currentScatterAmount) * 0.1;
+
+            const targetColor = hexToRgb(colors[Math.min(colorIndexTarget, colors.length - 1)]);
+            currentColor.r += (targetColor.r - currentColor.r) * 0.1;
+            currentColor.g += (targetColor.g - currentColor.g) * 0.1;
+            currentColor.b += (targetColor.b - currentColor.b) * 0.1;
+
+            const cosY = Math.cos(state.rotY);
+            const sinY = Math.sin(state.rotY);
+            const cosX = Math.cos(state.rotX);
+            const sinX = Math.sin(state.rotX);
+
+            const fov = 700;
+            const zOffset = 700;
+
+            ctx.fillStyle = `rgb(${Math.floor(currentColor.r)}, ${Math.floor(currentColor.g)}, ${Math.floor(currentColor.b)})`;
+
+            for (let i = 0; i < numParticles; i++) {
+                const p = particles[i];
+
+                const targetShape = p.shapes[currentShapeIndex];
+                p.base.x += (targetShape.x - p.base.x) * 0.08;
+                p.base.y += (targetShape.y - p.base.y) * 0.08;
+                p.base.z += (targetShape.z - p.base.z) * 0.08;
+
+                let bx = p.base.x * currentFormationScale + p.noise.x * currentScatterAmount;
+                let by = p.base.y * currentFormationScale + p.noise.y * currentScatterAmount;
+                let bz = p.base.z * currentFormationScale + p.noise.z * currentScatterAmount;
+
+                let tx2 = bx * cosY - bz * sinY;
+                let tz2 = bx * sinY + bz * cosY;
+                let ty3 = by * cosX - tz2 * sinX;
+                let tz3 = by * sinX + tz2 * cosX;
+
+                p.v.x += (tx2 - p.curr.x) * spring;
+                p.v.y += (ty3 - p.curr.y) * spring;
+                p.v.z += (tz3 - p.curr.z) * spring;
+
+                p.v.x *= damp;
+                p.v.y *= damp;
+                p.v.z *= damp;
+
+                p.curr.x += p.v.x;
+                p.curr.y += p.v.y;
+                p.curr.z += p.v.z;
+
+                const z = (p.curr.z * state.scale) + zOffset;
+                p.zProj = z; 
+                if (z < 10) continue;
+
+                const scaleProj = fov / z;
+                p.xProj = (p.curr.x * state.scale) * scaleProj + state.cx;
+                p.yProj = (p.curr.y * state.scale) * scaleProj + state.cy;
+
+                const alpha = Math.max(0.1, Math.min(1, scaleProj * 0.9));
+                const size = Math.max(0.5, 2.0 * scaleProj);
+
+                ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                ctx.arc(p.xProj, p.yProj, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            if (plexusEnabled) {
+                ctx.lineWidth = 0.5;
+                ctx.globalAlpha = 0.15;
+                ctx.strokeStyle = `rgb(${Math.floor(currentColor.r)}, ${Math.floor(currentColor.g)}, ${Math.floor(currentColor.b)})`;
+                ctx.beginPath();
+                for (let i = 0; i < numParticles - 1; i++) {
+                    const p1 = particles[i];
+                    const p2 = particles[i+1];
+                    if (p1.zProj > 10 && p2.zProj > 10) {
+                        const d = Math.hypot(p1.xProj - p2.xProj, p1.yProj - p2.yProj);
+                        if (d < 70) {
+                            ctx.moveTo(p1.xProj, p1.yProj);
+                            ctx.lineTo(p2.xProj, p2.yProj);
+                        }
+                    }
+                }
+                ctx.stroke();
+            }
+
+            if (isPinching) {
+                ctx.globalCompositeOperation = 'source-over';
+                charge += 0.015;
+                if (charge > 1) charge = 1;
+
+                ctx.beginPath();
+                ctx.arc(pinchPos.x, pinchPos.y, 50, -Math.PI/2, -Math.PI/2 + (charge * Math.PI * 2));
+                ctx.strokeStyle = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, 0.9)`;
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(pinchPos.x, pinchPos.y, 50, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(255, 255, 255, 0.1)`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                if (charge === 1) {
+                    ctx.fillStyle = `rgba(${currentColor.r}, ${currentColor.g}, ${currentColor.b}, 1)`;
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.letterSpacing = '2px';
+                    ctx.fillText('RELEASE', pinchPos.x, pinchPos.y - 65);
+                }
+            }
+
+            requestAnimationFrame(render);
+        }
+
+        // --- 7. MEDIAPIPE HANDS INTEGRATION ---
+        function getFingerCount(hand) {
+            let count = 0;
+            if (hand[8].y < hand[6].y) count++;
+            if (hand[12].y < hand[10].y) count++;
+            if (hand[16].y < hand[14].y) count++;
+            if (hand[20].y < hand[18].y) count++;
+            const dTip = Math.hypot(hand[4].x - hand[13].x, hand[4].y - hand[13].y);
+            const dBase = Math.hypot(hand[2].x - hand[13].x, hand[2].y - hand[13].y);
+            if (dTip > dBase + 0.02) count++;
+            return count;
+        }
+
+        function onResults(results) {
+            if (loadingText.style.display !== 'none') {
+                loadingText.style.display = 'none';
+                instructionsText.style.display = 'block';
+            }
+
+            activeHands = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
+            if (activeHands > 0) pointerDown = false; 
+
+            if (activeHands === 1) {
+                const hand = results.multiHandLandmarks[0];
+                const center = hand[9];
+
+                targetState.cx = (1 - center.x) * width;
+                targetState.cy = center.y * height;
+                targetState.rotY = (0.5 - center.x) * Math.PI * 2.5;
+                targetState.rotX = (center.y - 0.5) * Math.PI * 2.5;
+
+                colorIndexTarget = getFingerCount(hand);
+                formationScaleTarget = 1.0;
+                scatterAmountTarget = 0;
+
+                const thumbTip = hand[4];
+                const indexTip = hand[8];
+                const p1 = { x: (1 - thumbTip.x) * width, y: thumbTip.y * height };
+                const p2 = { x: (1 - indexTip.x) * width, y: indexTip.y * height };
+                const pinchDist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+                
+                pinchPos = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+
+                if (pinchDist < 45) { 
+                    isPinching = true;
+                } else {
+                    if (isPinching && charge >= 1.0) triggerExplosion();
+                    isPinching = false;
+                    charge = 0;
+                }
+
+            } else if (activeHands === 2) {
+                const hand1 = results.multiHandLandmarks[0];
+                const hand2 = results.multiHandLandmarks[1];
+
+                const c1 = hand1[9];
+                const c2 = hand2[9];
+
+                const h1p = { x: (1 - c1.x) * width, y: c1.y * height };
+                const h2p = { x: (1 - c2.x) * width, y: c2.y * height };
+
+                targetState.cx = (h1p.x + h2p.x) / 2;
+                targetState.cy = (h1p.y + h2p.y) / 2;
+                targetState.rotY += 0.01;
+
+                const handDist = Math.hypot(h1p.x - h2p.x, h1p.y - h2p.y);
+                targetState.scale = Math.max(0.3, Math.min(handDist / 300, 4.0));
+                
+                if (handDist < 100) {
+                    formationScaleTarget = 0.02; 
+                    scatterAmountTarget = 0;
+                } else if (handDist > 350) {
+                    formationScaleTarget = 1.0;
+                    scatterAmountTarget = (handDist - 350) * 2; 
+                } else {
+                    formationScaleTarget = 1.0;
+                    scatterAmountTarget = 0;
+                }
+
+                colorIndexTarget = getFingerCount(hand1) + getFingerCount(hand2);
+
+                if (isPinching && charge >= 1.0) triggerExplosion();
+                isPinching = false;
+                charge = 0;
+            }
+        }
+
+        // --- CUSTOM SMOOTH CURSOR & LENIS SCROLL ---
+        const cursorDot = document.getElementById('cursor-dot');
+        const cursorRing = document.getElementById('cursor-ring');
+        
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+        let dotX = mouseX;
+        let dotY = mouseY;
+        let ringX = mouseX;
+        let ringY = mouseY;
+        
+        window.addEventListener('pointermove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            if (cursorDot && cursorRing) {
+                cursorDot.style.opacity = '1';
+                cursorRing.style.opacity = '1';
+            }
+        });
+
+        document.addEventListener('pointerleave', () => {
+            if (cursorDot && cursorRing) {
+                cursorDot.style.opacity = '0';
+                cursorRing.style.opacity = '0';
+            }
+        });
+        
+        // Add hover effects for custom cursor
+        document.addEventListener('mouseover', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'A' || e.target.closest('a')) {
+                if (cursorDot && cursorRing) {
+                    cursorDot.classList.add('hover');
+                    cursorRing.classList.add('hover');
+                }
+            }
+        });
+        document.addEventListener('mouseout', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'A' || e.target.closest('a')) {
+                if (cursorDot && cursorRing) {
+                    cursorDot.classList.remove('hover');
+                    cursorRing.classList.remove('hover');
+                }
+            }
+        });
+
+        // Initialize Lenis smooth scroll
+        let lenis;
+        if (typeof Lenis !== 'undefined') {
+            lenis = new Lenis({
+                duration: 1.2,
+                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+                direction: 'vertical',
+                gestureDirection: 'vertical',
+                smooth: true,
+                mouseMultiplier: 1,
+                smoothTouch: false,
+                touchMultiplier: 2,
+                infinite: false,
+            });
+            
+            function raf(time) {
+                lenis.raf(time);
+                requestAnimationFrame(raf);
+            }
+            requestAnimationFrame(raf);
+        }
+
+        // --- 8. INIT ---
+        render();
+
+        if (typeof Hands !== 'undefined' && typeof Camera !== 'undefined') {
+            const hands = new Hands({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+            hands.setOptions({
+                maxNumHands: 2,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.6,
+                minTrackingConfidence: 0.6
+            });
+            hands.onResults(onResults);
+
+            const camera = new Camera(videoElement, {
+                onFrame: async () => { await hands.send({image: videoElement}); },
+                width: 640,
+                height: 480
+            });
+            camera.start();
+        } else {
+            simulated = true;
+            loadingText.innerHTML = "Preview Sandbox Active <br><br> <span style='color:#ffaaaa'>For Hand Tracking, please download this file and open it in your browser.</span>";
+        }
+
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a123fef1fdcd14c8',t:'MTc4MjU1ODUyOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
