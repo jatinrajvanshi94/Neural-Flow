@@ -16,7 +16,6 @@ Experience it here: **[https://neural-flow-ten.vercel.app/](https://neural-flow-
 - **Hand Gesture Tracking**: Powered by MediaPipe Hands, allowing users to rotate, scale, charge, and explode particles with physical hand movements.
 - **Generative Audio Synthesis**: Interactive synthesizers driven by particle acceleration, charge cycles, and coordinate manipulation.
 - **Responsive HUD Dashboard**: A slide-out hamburger drawer panel on mobile/tablet screens that organizes settings, controls, and instructions into a clean overlay.
-- **D-Pad TV Integration**: Large scale parameters and explicit focus indicators optimized for smart TV browsers using TV remote controls.
 
 ---
 
